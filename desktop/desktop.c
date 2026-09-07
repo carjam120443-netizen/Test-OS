@@ -4,12 +4,54 @@
 #include "compositor.h"
 #include "input.h"
 
+#define VGA_WIDTH 80
+#define VGA_HEIGHT 25
+#define VGA_MEMORY ((volatile uint16_t *)0xB8000)
+
 static int starter_window;
 static int terminal_window;
 static uint8_t previous_buttons;
 static uint8_t launcher_open;
 static uint8_t dragging;
 static int32_t drag_dx, drag_dy;
+
+static void vga_clear(void) {
+    for (uint32_t i = 0; i < VGA_WIDTH * VGA_HEIGHT; ++i)
+        VGA_MEMORY[i] = ((uint16_t)0x07 << 8) | ' ';
+}
+
+static void vga_put(uint32_t x, uint32_t y, char c, uint8_t color) {
+    if (x >= VGA_WIDTH || y >= VGA_HEIGHT) return;
+    VGA_MEMORY[y * VGA_WIDTH + x] = ((uint16_t)color << 8) | (uint8_t)c;
+}
+
+static void vga_text(uint32_t x, uint32_t y, const char *s, uint8_t color) {
+    while (*s && x < VGA_WIDTH) {
+        if (*s == '\n') { ++y; x = 0; }
+        else vga_put(x++, y, *s, color);
+        if (y >= VGA_HEIGHT) return;
+        ++s;
+    }
+}
+
+static void desktop_draw_vga(void) {
+    vga_clear();
+    vga_text(0, 0, "============================================================", 0x1F);
+    vga_text(0, 1, "                    TEST-OS DESKTOP", 0x1F);
+    vga_text(0, 2, "============================================================", 0x1F);
+    vga_text(0, 4, "[ START ]", 0x1E);
+    vga_text(0, 6, "+----------------------------------------------------------+", 0x17);
+    vga_text(0, 7, "| TEST-OS DESKTOP                                          X |", 0x1F);
+    vga_text(0, 8, "+----------------------------------------------------------+", 0x17);
+    vga_text(0, 10, "| Graphics framebuffer unavailable.                         |", 0x07);
+    vga_text(0, 11, "| Running the VGA text-mode desktop fallback.              |", 0x07);
+    vga_text(0, 13, "| The kernel is alive and the desktop event loop is ready. |", 0x07);
+    vga_text(0, 15, "+----------------------------------------------------------+", 0x17);
+    vga_text(0, 17, "TERMINAL", 0x0F);
+    vga_text(0, 18, "Type a command once userspace input is connected.", 0x07);
+    vga_text(0, 22, "TEST-OS SAFE DESKTOP MODE", 0x1F);
+    vga_text(0, 23, "Framebuffer: unavailable | VGA fallback: ACTIVE", 0x07);
+}
 
 static void fill_rect(uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint32_t pixel) {
     const struct framebuffer *fb = graphics_framebuffer();
@@ -80,7 +122,10 @@ static void draw_window(const struct window *w, const char *title, uint32_t titl
 }
 
 void desktop_draw(void) {
-    if (!graphics_ready()) return;
+    if (!graphics_ready()) {
+        desktop_draw_vga();
+        return;
+    }
     const struct framebuffer *fb = graphics_framebuffer();
     const struct input_state *in = input_state();
     const uint32_t bg = 0x001B2430, panel = 0x00232F3D, blue = 0x003B82F6;
@@ -104,12 +149,16 @@ void desktop_draw(void) {
 
     draw_window(compositor_window((uint32_t)starter_window), "DESKTOP", blue, 0x00E7EDF2, 0x00131A21);
     if (terminal_window) draw_window(compositor_window((uint32_t)terminal_window), "TERMINAL", 0x001F6FEB, 0x00131820, 0x00FFFFFF);
-
     draw_cursor(in->mouse_x, in->mouse_y, 0x00FFFFFF);
 }
 
 void desktop_update(void) {
-    if (!graphics_ready()) return;
+    if (!graphics_ready()) {
+        input_poll();
+        previous_buttons = input_state()->buttons;
+        desktop_draw_vga();
+        return;
+    }
     input_poll();
     const struct input_state *in = input_state();
     const struct framebuffer *fb = graphics_framebuffer();
@@ -149,10 +198,18 @@ void desktop_update(void) {
 void desktop_init(void) {
     compositor_init();
     const struct framebuffer *fb = graphics_framebuffer();
+    launcher_open = 0; terminal_window = 0; dragging = 0; previous_buttons = 0;
+
+    if (!graphics_ready()) {
+        starter_window = 0;
+        input_init(VGA_WIDTH, VGA_HEIGHT);
+        desktop_draw_vga();
+        return;
+    }
+
     uint32_t ww = fb->width >= 500 ? 420 : fb->width > 220 ? fb->width - 30 : fb->width;
     uint32_t wh = fb->height >= 300 ? 240 : fb->height > 100 ? fb->height - 70 : fb->height;
     starter_window = compositor_create_window((fb->width - ww) / 2, (fb->height - 48 - wh) / 2, ww, wh);
     input_init(fb->width, fb->height);
-    launcher_open = 0; terminal_window = 0; dragging = 0; previous_buttons = 0;
     desktop_draw();
 }
