@@ -4,6 +4,7 @@
 #include <stdint.h>
 
 #define TESTOS_MAX_PROCESSES 16
+#define TESTOS_USER_STACK_TOP 0x00F00000u
 #define PROCESS_UNUSED 0
 #define PROCESS_READY  1
 #define PROCESS_RUNNING 2
