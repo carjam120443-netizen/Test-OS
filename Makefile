@@ -4,9 +4,9 @@ LD=ld
 OBJCOPY=objcopy
 PYTHON=python3
 ASFLAGS=-f elf32
-CFLAGS=-m32 -ffreestanding -O2 -Wall -Wextra -fno-stack-protector -fno-pie -fno-pic -fno-builtin -Iinclude -Ikernel
+CFLAGS=-m32 -ffreestanding -O2 -Wall -Wextra -fno-stack-protector -fno-pie -fno-pic -fno-builtin -Iinclude -Ikernel -Idesktop
 USER_CFLAGS=-m32 -ffreestanding -O2 -Wall -Wextra -fno-stack-protector -fno-pie -fno-pic -fno-builtin -nostdlib -Iinclude -Iuser
-LDFLAGS=-T kernel/linker.ld -m elf_i386
+LDFLAGS=-T kernel/linker.ld -m elf_i386 -z noexecstack
 BUILD=build
 all: $(BUILD)/testos.bin
 $(BUILD):
@@ -39,7 +39,7 @@ $(BUILD)/graphics.o: kernel/graphics.c kernel/graphics.h | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
 $(BUILD)/compositor.o: kernel/compositor.c kernel/compositor.h | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
-$(BUILD)/desktop.o: kernel/desktop.c kernel/desktop.h kernel/graphics.h kernel/compositor.h | $(BUILD)
+$(BUILD)/desktop.o: desktop/desktop.c desktop/desktop.h kernel/graphics.h kernel/compositor.h | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
 $(BUILD)/xfce_session.o: desktop/xfce/xfce_session.c | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
