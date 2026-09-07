@@ -1,5 +1,6 @@
 #include "syscall.h"
 #include "process.h"
+#include "desktop.h"
 #include <stdint.h>
 
 #define VGA_WIDTH 80
@@ -36,6 +37,8 @@ uint32_t syscall_dispatch(uint32_t number, uint32_t arg0, uint32_t arg1, uint32_
             user_console_write((const char*)arg0);
             return 0;
         case SYS_YIELD:
+            /* The first userspace process doubles as the desktop event loop. */
+            desktop_update();
             __asm__ volatile ("pause");
             return 0;
         case SYS_GETPID:
