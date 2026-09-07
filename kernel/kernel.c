@@ -10,6 +10,7 @@
 #include "elf.h"
 #include "graphics.h"
 #include "compositor.h"
+#include "desktop.h"
 
 #define VGA_WIDTH 80
 #define VGA_HEIGHT 25
@@ -25,11 +26,14 @@ static void terminal_write(const char *s) { while(*s) terminal_putchar(*s++); }
 
 void kernel_main(uint32_t multiboot_magic, uint32_t multiboot_info) {
     terminal_clear();
-    terminal_write("===========================\nTEST-OS KERNEL 0.4.0\n===========================\n\nArchitecture: x86 / i386\n");
+    terminal_write("===========================\nTEST-OS KERNEL 0.5.0\n===========================\n\nArchitecture: x86 / i386\n");
     terminal_write("Graphics: ");
     terminal_write(graphics_init(multiboot_magic, multiboot_info) ? "FRAMEBUFFER READY\n" : "VGA FALLBACK\n");
     compositor_init();
     terminal_write("Compositor: READY (window/surface registry)\n");
+    terminal_write("Desktop: initializing native graphical shell...\n");
+    desktop_init();
+    terminal_write("Desktop: READY (framebuffer + panel + starter window)\n");
     terminal_write("Network: initializing E1000...\n");
     net_init();
     gdt_init(); terminal_write("GDT: READY\n");
@@ -50,7 +54,7 @@ void kernel_main(uint32_t multiboot_magic, uint32_t multiboot_info) {
     terminal_write("Process: "); terminal_write(init_pid>0?"PID 1 + address space READY\n":"FAILED\n");
     if(init_pid<=0||!paging_switch(user_pd)) for(;;)__asm__ volatile("hlt");
     terminal_write("Exec path: kernel -> process -> virtual address space -> ELF -> ring 3\n");
-    terminal_write("libc + ramfs + framebuffer + compositor foundations: ONLINE\n");
+    terminal_write("libc + ramfs + framebuffer + compositor + desktop: ONLINE\n");
     terminal_write("Launching /bin/init...\n");
     enter_user_mode(image.entry,0x00800000);
     for(;;)__asm__ volatile("hlt");
