@@ -37,19 +37,19 @@ jobs:
         run: |
           nasm -f elf32 boot/boot.asm -o build/boot.o
           nasm -f elf32 kernel/syscall_isr.asm -o build/syscall_isr.o
-          for src in kernel/kernel.c kernel/net.c kernel/process.c kernel/syscall.c kernel/gdt.c kernel/tss.c kernel/paging.c kernel/idt.c kernel/fs.c kernel/elf.c kernel/graphics.c kernel/compositor.c desktop/xfce/xfce_session.c; do
+          for src in kernel/kernel.c kernel/net.c kernel/process.c kernel/syscall.c kernel/gdt.c kernel/tss.c kernel/paging.c kernel/idt.c kernel/fs.c kernel/elf.c kernel/graphics.c kernel/compositor.c desktop/desktop.c desktop/xfce/xfce_session.c; do
             obj="build/$(basename "$src" .c).o"
-            gcc -m32 -ffreestanding -O2 -Wall -Wextra -fno-stack-protector -fno-pie -fno-pic -fno-builtin -Iinclude -Ikernel -c "$src" -o "$obj"
+            gcc -m32 -ffreestanding -O2 -Wall -Wextra -fno-stack-protector -fno-pie -fno-pic -fno-builtin -Iinclude -Ikernel -Idesktop -c "$src" -o "$obj"
           done
 
       - name: Link kernel
         run: |
-          ld -m elf_i386 -T kernel/linker.ld -o build/testos.bin \
+          ld -m elf_i386 -T kernel/linker.ld -z noexecstack -o build/testos.bin \
             build/boot.o build/syscall_isr.o build/kernel.o build/net.o build/process.o \
             build/syscall.o build/gdt.o build/tss.o build/paging.o build/idt.o build/fs.o \
-            build/elf.o build/graphics.o build/compositor.o build/xfce_session.o build/initramfs.o
+            build/elf.o build/graphics.o build/compositor.o build/desktop.o build/xfce_session.o build/initramfs.o
           readelf -h build/testos.bin
-          nm -n build/testos.bin | grep -E '(_start|kernel_main|compositor_init|__initramfs_(start|end))'
+          nm -n build/testos.bin | grep -E '(_start|kernel_main|compositor_init|desktop_init|__initramfs_(start|end))'
 
       - name: Build ISO
         run: |
