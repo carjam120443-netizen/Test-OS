@@ -31,9 +31,16 @@ jobs:
         run: |
           mkdir -p build
           nasm -f elf32 boot/boot.asm -o build/boot.o
-          gcc -m32 -ffreestanding -O2 -Wall -Wextra -Iinclude -c kernel/kernel.c -o build/kernel.o
-          gcc -m32 -ffreestanding -O2 -Wall -Wextra -Iinclude -c kernel/net.c -o build/net.o
-          ld -m elf_i386 -T kernel/linker.ld -o build/testos.bin build/boot.o build/kernel.o build/net.o
+          gcc -m32 -ffreestanding -O2 -Wall -Wextra -fno-stack-protector -Iinclude -c kernel/kernel.c -o build/kernel.o
+          gcc -m32 -ffreestanding -O2 -Wall -Wextra -fno-stack-protector -Iinclude -c kernel/net.c -o build/net.o
+          gcc -m32 -ffreestanding -O2 -Wall -Wextra -fno-stack-protector -Iinclude -c kernel/process.c -o build/process.o
+          gcc -m32 -ffreestanding -O2 -Wall -Wextra -fno-stack-protector -Iinclude -c kernel/syscall.c -o build/syscall.o
+          ld -m elf_i386 -T kernel/linker.ld -o build/testos.bin build/boot.o build/kernel.o build/net.o build/process.o build/syscall.o
+
+      - name: Build userspace init
+        run: |
+          gcc -m32 -ffreestanding -O2 -Wall -Wextra -fno-stack-protector -nostdlib -Iinclude -c user/init.c -o build/init.o
+          file build/init.o
 
       - name: Build ISO
         run: |
