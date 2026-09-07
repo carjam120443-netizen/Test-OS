@@ -1,8 +1,8 @@
-#include "syscall.h"
+#include "libc.h"
 
-__attribute__((section(".user.text")))
 void user_init(void) {
-    sys_write("Test-OS userspace: init is running in ring 3.\n");
-    sys_write("XFCE userspace stack is now being built.\n");
+    puts("Test-OS userspace: init is running in ring 3.");
+    puts("libc: strlen/memcpy/memset/strcmp/puts are available.");
+    puts("filesystem: /bin/init was loaded from initramfs as ELF32.");
     for (;;) sys_yield();
 }
