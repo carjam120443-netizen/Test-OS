@@ -11,8 +11,10 @@ void compositor_init(void) {
 int compositor_create_window(uint32_t x, uint32_t y, uint32_t width, uint32_t height) {
     if (count >= TESTOS_MAX_WINDOWS || !width || !height) return -1;
     struct window *w = &windows[count];
-    w->id = count + 1; w->x = x; w->y = y; w->width = width; w->height = height; w->flags = 1;
-    return (int)w->id++ - 1;
+    w->id = count + 1;
+    w->x = x; w->y = y; w->width = width; w->height = height; w->flags = 1;
+    ++count;
+    return (int)w->id;
 }
 
 const struct window *compositor_window(uint32_t id) {
