@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include "net.h"
 
 #define VGA_WIDTH 80
 #define VGA_HEIGHT 25
@@ -65,9 +66,48 @@ static void terminal_write(const char* text) {
     while (*text) terminal_putchar(*text++);
 }
 
+static void terminal_write_hex8(uint8_t value) {
+    static const char hex[] = "0123456789ABCDEF";
+    terminal_putchar(hex[(value >> 4) & 0xF]);
+    terminal_putchar(hex[value & 0xF]);
+}
+
+static void terminal_write_dec(uint32_t value) {
+    char buffer[11];
+    int i = 0;
+    if (value == 0) { terminal_putchar('0'); return; }
+    while (value && i < (int)sizeof(buffer)) {
+        buffer[i++] = (char)('0' + (value % 10));
+        value /= 10;
+    }
+    while (i--) terminal_putchar(buffer[i]);
+}
+
 static int string_equal(const char* a, const char* b) {
     while (*a && *b && *a == *b) { ++a; ++b; }
     return *a == *b;
+}
+
+static void print_network_status(void) {
+    uint8_t mac[6];
+    net_get_mac(mac);
+    terminal_write("Network driver: ");
+    terminal_write(net_is_ready() ? "E1000 READY\n" : "NO NIC FOUND\n");
+    if (!net_is_ready()) return;
+    terminal_write("Link: ");
+    terminal_write(net_link_up() ? "UP\n" : "DOWN\n");
+    terminal_write("MAC: ");
+    for (int i = 0; i < 6; ++i) {
+        terminal_write_hex8(mac[i]);
+        if (i != 5) terminal_putchar(':');
+    }
+    terminal_putchar('\n');
+    terminal_write("RX packets: ");
+    terminal_write_dec(net_rx_packets());
+    terminal_putchar('\n');
+    terminal_write("TX packets: ");
+    terminal_write_dec(net_tx_packets());
+    terminal_putchar('\n');
 }
 
 static void shell_prompt(void) {
@@ -86,12 +126,17 @@ static void shell_command(void) {
         terminal_write("  about  - show system information\n");
         terminal_write("  clear  - clear the terminal\n");
         terminal_write("  echo   - print text\n");
+        terminal_write("  net    - show network adapter status\n");
         terminal_write("  reboot - reboot the machine\n\n");
         shell_prompt();
     } else if (string_equal(input, "about")) {
         terminal_write("Test-OS 0.1.0\n");
         terminal_write("A tiny experimental x86 operating system.\n");
         terminal_write("Kernel: C + x86 assembly\n\n");
+        shell_prompt();
+    } else if (string_equal(input, "net")) {
+        print_network_status();
+        terminal_putchar('\n');
         shell_prompt();
     } else if (string_equal(input, "clear")) {
         terminal_clear();
@@ -151,12 +196,15 @@ void kernel_main(void) {
     terminal_write("Test-OS has booted successfully!\n");
     terminal_write("Kernel: 0.1.0\n");
     terminal_write("Architecture: x86\n");
-    terminal_write("Status: ONLINE\n\n");
+    terminal_write("Status: ONLINE\n");
+    terminal_write("Initializing network...\n");
+    terminal_write(net_init() ? "Network: E1000 initialized\n\n" : "Network: no supported E1000 NIC\n\n");
     terminal_write("Type 'help' for available commands.\n\n");
     shell_prompt();
 
     for (;;) {
         keyboard_poll();
+        net_poll();
         __asm__ volatile ("hlt");
     }
 }
