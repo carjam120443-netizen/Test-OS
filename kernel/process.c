@@ -13,16 +13,17 @@ void process_init(void) {
         processes[i].user_stack = 0;
         processes[i].image_start = 0;
         processes[i].image_end = 0;
+        processes[i].page_directory = 0;
         processes[i].name = 0;
     }
     next_pid = 1;
     process_total = 0;
 }
 
-int process_create(const char *name, uint32_t entry, uint32_t image_start, uint32_t image_end) {
+int process_create(const char *name, uint32_t entry, uint32_t image_start, uint32_t image_end, uint32_t page_directory) {
+    if (!page_directory) return -1;
     for (uint32_t i = 0; i < TESTOS_MAX_PROCESSES; ++i) {
         if (processes[i].state != PROCESS_UNUSED) continue;
-
         processes[i].pid = next_pid++;
         processes[i].parent_pid = 0;
         processes[i].state = PROCESS_READY;
@@ -30,6 +31,7 @@ int process_create(const char *name, uint32_t entry, uint32_t image_start, uint3
         processes[i].user_stack = 0x00800000;
         processes[i].image_start = image_start;
         processes[i].image_end = image_end;
+        processes[i].page_directory = page_directory;
         processes[i].name = name;
         ++process_total;
         return (int)processes[i].pid;
@@ -39,15 +41,9 @@ int process_create(const char *name, uint32_t entry, uint32_t image_start, uint3
 
 const struct process *process_get(uint32_t pid) {
     for (uint32_t i = 0; i < TESTOS_MAX_PROCESSES; ++i)
-        if (processes[i].state != PROCESS_UNUSED && processes[i].pid == pid)
-            return &processes[i];
+        if (processes[i].state != PROCESS_UNUSED && processes[i].pid == pid) return &processes[i];
     return 0;
 }
 
-uint32_t process_count(void) {
-    return process_total;
-}
-
-const struct process *process_table(void) {
-    return processes;
-}
+uint32_t process_count(void) { return process_total; }
+const struct process *process_table(void) { return processes; }
