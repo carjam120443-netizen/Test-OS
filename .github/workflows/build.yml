@@ -27,21 +27,34 @@ jobs:
           mformat -V || true
           xorriso -version | head -n 1
 
-      - name: Build kernel
+      - name: Build kernel and architecture layer
         run: |
           mkdir -p build
           nasm -f elf32 boot/boot.asm -o build/boot.o
-          gcc -m32 -ffreestanding -O2 -Wall -Wextra -fno-stack-protector -Iinclude -c kernel/kernel.c -o build/kernel.o
-          gcc -m32 -ffreestanding -O2 -Wall -Wextra -fno-stack-protector -Iinclude -c kernel/net.c -o build/net.o
-          gcc -m32 -ffreestanding -O2 -Wall -Wextra -fno-stack-protector -Iinclude -c kernel/process.c -o build/process.o
-          gcc -m32 -ffreestanding -O2 -Wall -Wextra -fno-stack-protector -Iinclude -I kernel -c kernel/syscall.c -o build/syscall.o
-          gcc -m32 -ffreestanding -O2 -Wall -Wextra -fno-stack-protector -Iinclude -I kernel -c desktop/xfce/xfce_session.c -o build/xfce_session.o
-          ld -m elf_i386 -T kernel/linker.ld -o build/testos.bin build/boot.o build/kernel.o build/net.o build/process.o build/syscall.o build/xfce_session.o
+          nasm -f elf32 kernel/syscall_isr.asm -o build/syscall_isr.o
+          gcc -m32 -ffreestanding -O2 -Wall -Wextra -fno-stack-protector -fno-pie -fno-pic -Iinclude -Ikernel -c kernel/kernel.c -o build/kernel.o
+          gcc -m32 -ffreestanding -O2 -Wall -Wextra -fno-stack-protector -fno-pie -fno-pic -Iinclude -Ikernel -c kernel/net.c -o build/net.o
+          gcc -m32 -ffreestanding -O2 -Wall -Wextra -fno-stack-protector -fno-pie -fno-pic -Iinclude -Ikernel -c kernel/process.c -o build/process.o
+          gcc -m32 -ffreestanding -O2 -Wall -Wextra -fno-stack-protector -fno-pie -fno-pic -Iinclude -Ikernel -c kernel/syscall.c -o build/syscall.o
+          gcc -m32 -ffreestanding -O2 -Wall -Wextra -fno-stack-protector -fno-pie -fno-pic -Iinclude -Ikernel -c kernel/gdt.c -o build/gdt.o
+          gcc -m32 -ffreestanding -O2 -Wall -Wextra -fno-stack-protector -fno-pie -fno-pic -Iinclude -Ikernel -c kernel/tss.c -o build/tss.o
+          gcc -m32 -ffreestanding -O2 -Wall -Wextra -fno-stack-protector -fno-pie -fno-pic -Iinclude -Ikernel -c kernel/paging.c -o build/paging.o
+          gcc -m32 -ffreestanding -O2 -Wall -Wextra -fno-stack-protector -fno-pie -fno-pic -Iinclude -Ikernel -c kernel/idt.c -o build/idt.o
+          gcc -m32 -ffreestanding -O2 -Wall -Wextra -fno-stack-protector -fno-pie -fno-pic -Iinclude -Ikernel -c desktop/xfce/xfce_session.c -o build/xfce_session.o
 
-      - name: Build userspace init
+      - name: Build userspace init image
         run: |
-          gcc -m32 -ffreestanding -O2 -Wall -Wextra -fno-stack-protector -nostdlib -Iinclude -c user/init.c -o build/init.o
+          gcc -m32 -ffreestanding -O2 -Wall -Wextra -fno-stack-protector -fno-pie -fno-pic -nostdlib -Iinclude -c user/init.c -o build/init.o
           file build/init.o
+
+      - name: Link kernel and userspace image
+        run: |
+          ld -m elf_i386 -T kernel/linker.ld -o build/testos.bin \
+            build/boot.o build/kernel.o build/net.o build/process.o build/syscall.o \
+            build/gdt.o build/tss.o build/paging.o build/idt.o build/syscall_isr.o \
+            build/xfce_session.o build/init.o
+          readelf -h build/testos.bin
+          nm -n build/testos.bin | grep -E 'user_init|__user_(start|end)' || true
 
       - name: Build ISO
         run: |
