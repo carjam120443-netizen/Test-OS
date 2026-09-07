@@ -2,8 +2,8 @@ AS=nasm
 CC=gcc
 LD=ld
 ASFLAGS=-f elf32
-CFLAGS=-m32 -ffreestanding -O2 -Wall -Wextra -fno-stack-protector -Iinclude
-USER_CFLAGS=-m32 -ffreestanding -O2 -Wall -Wextra -fno-stack-protector -nostdlib -Iinclude
+CFLAGS=-m32 -ffreestanding -O2 -Wall -Wextra -fno-stack-protector -fno-pie -fno-pic -Iinclude -Ikernel
+USER_CFLAGS=-m32 -ffreestanding -O2 -Wall -Wextra -fno-stack-protector -fno-pie -fno-pic -nostdlib -Iinclude
 LDFLAGS=-T kernel/linker.ld -m elf_i386
 
 BUILD=build
@@ -16,10 +16,13 @@ $(BUILD):
 $(BUILD)/boot.o: boot/boot.asm | $(BUILD)
 	$(AS) $(ASFLAGS) $< -o $@
 
+$(BUILD)/syscall_isr.o: kernel/syscall_isr.asm | $(BUILD)
+	$(AS) $(ASFLAGS) $< -o $@
+
 $(BUILD)/kernel.o: kernel/kernel.c | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(BUILD)/net.o: kernel/net.c include/net.h | $(BUILD)
+$(BUILD)/net.o: kernel/net.c kernel/net.h | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD)/process.o: kernel/process.c kernel/process.h | $(BUILD)
@@ -28,11 +31,26 @@ $(BUILD)/process.o: kernel/process.c kernel/process.h | $(BUILD)
 $(BUILD)/syscall.o: kernel/syscall.c kernel/syscall.h kernel/process.h | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(BUILD)/testos.bin: $(BUILD)/boot.o $(BUILD)/kernel.o $(BUILD)/net.o $(BUILD)/process.o $(BUILD)/syscall.o kernel/linker.ld
-	$(LD) $(LDFLAGS) -o $@ $(BUILD)/boot.o $(BUILD)/kernel.o $(BUILD)/net.o $(BUILD)/process.o $(BUILD)/syscall.o
+$(BUILD)/gdt.o: kernel/gdt.c kernel/gdt.h | $(BUILD)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/tss.o: kernel/tss.c kernel/tss.h kernel/gdt.h | $(BUILD)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/paging.o: kernel/paging.c kernel/paging.h | $(BUILD)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/idt.o: kernel/idt.c kernel/idt.h | $(BUILD)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/xfce_session.o: desktop/xfce/xfce_session.c | $(BUILD)
+	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD)/init.o: user/init.c include/syscall.h | $(BUILD)
 	$(CC) $(USER_CFLAGS) -c $< -o $@
+
+$(BUILD)/testos.bin: $(BUILD)/boot.o $(BUILD)/syscall_isr.o $(BUILD)/kernel.o $(BUILD)/net.o $(BUILD)/process.o $(BUILD)/syscall.o $(BUILD)/gdt.o $(BUILD)/tss.o $(BUILD)/paging.o $(BUILD)/idt.o $(BUILD)/xfce_session.o $(BUILD)/init.o kernel/linker.ld
+	$(LD) $(LDFLAGS) -o $@ $(BUILD)/boot.o $(BUILD)/syscall_isr.o $(BUILD)/kernel.o $(BUILD)/net.o $(BUILD)/process.o $(BUILD)/syscall.o $(BUILD)/gdt.o $(BUILD)/tss.o $(BUILD)/paging.o $(BUILD)/idt.o $(BUILD)/xfce_session.o $(BUILD)/init.o
 
 userspace: $(BUILD)/init.o
 	@echo "Userspace init compiled: $(BUILD)/init.o"
