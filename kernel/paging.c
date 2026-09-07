@@ -24,9 +24,10 @@ int paging_init(void) {
 
     for (uint32_t table = 0; table < 4; ++table) {
         for (uint32_t i = 0; i < 1024; ++i) {
-            page_tables[table][i] = (table * 0x400000 + i * 0x1000) | 0x003;
+            /* Present + writable + user accessible during early bootstrap. */
+            page_tables[table][i] = (table * 0x400000 + i * 0x1000) | 0x007;
         }
-        page_directory[table] = ((uint32_t)page_tables[table]) | 0x003;
+        page_directory[table] = ((uint32_t)page_tables[table]) | 0x007;
     }
 
     write_cr3((uint32_t)page_directory);
