@@ -15,46 +15,50 @@ jobs:
       - name: Install build tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y nasm grub-pc-bin grub-common xorriso mtools gcc-multilib binutils
+          sudo apt-get install -y nasm grub-pc-bin grub-common xorriso mtools gcc-multilib binutils python3
 
-      - name: Verify ISO tooling
+      - name: Verify build tools
         run: |
           command -v nasm
           command -v grub-mkrescue
           command -v mformat
           command -v xorriso
-          grub-mkrescue --version
-          mformat -V || true
-          xorriso -version | head -n 1
+          command -v objcopy
+          python3 --version
+
+      - name: Build userspace libc and ELF executable
+        run: |
+          mkdir -p build
+          gcc -m32 -ffreestanding -O2 -Wall -Wextra -fno-stack-protector -fno-pie -fno-pic -fno-builtin -nostdlib -Iinclude -Iuser -c user/libc.c -o build/libc.o
+          gcc -m32 -ffreestanding -O2 -Wall -Wextra -fno-stack-protector -fno-pie -fno-pic -fno-builtin -nostdlib -Iinclude -Iuser -c user/init.c -o build/init.o
+          ld -m elf_i386 -T user/user.ld -o build/init.elf build/libc.o build/init.o
+          readelf -h build/init.elf
+          readelf -l build/init.elf
+
+      - name: Build initramfs filesystem image
+        run: |
+          python3 tools/mkinitramfs.py build/init.elf build/initramfs.img
+          ls -lh build/initramfs.img
+          objcopy -I binary -O elf32-i386 -B i386 build/initramfs.img build/initramfs.o
+          objcopy --rename-section .data=.initramfs,alloc,load,readonly,data,contents build/initramfs.o
 
       - name: Build kernel and architecture layer
         run: |
-          mkdir -p build
           nasm -f elf32 boot/boot.asm -o build/boot.o
           nasm -f elf32 kernel/syscall_isr.asm -o build/syscall_isr.o
-          gcc -m32 -ffreestanding -O2 -Wall -Wextra -fno-stack-protector -fno-pie -fno-pic -Iinclude -Ikernel -c kernel/kernel.c -o build/kernel.o
-          gcc -m32 -ffreestanding -O2 -Wall -Wextra -fno-stack-protector -fno-pie -fno-pic -Iinclude -Ikernel -c kernel/net.c -o build/net.o
-          gcc -m32 -ffreestanding -O2 -Wall -Wextra -fno-stack-protector -fno-pie -fno-pic -Iinclude -Ikernel -c kernel/process.c -o build/process.o
-          gcc -m32 -ffreestanding -O2 -Wall -Wextra -fno-stack-protector -fno-pie -fno-pic -Iinclude -Ikernel -c kernel/syscall.c -o build/syscall.o
-          gcc -m32 -ffreestanding -O2 -Wall -Wextra -fno-stack-protector -fno-pie -fno-pic -Iinclude -Ikernel -c kernel/gdt.c -o build/gdt.o
-          gcc -m32 -ffreestanding -O2 -Wall -Wextra -fno-stack-protector -fno-pie -fno-pic -Iinclude -Ikernel -c kernel/tss.c -o build/tss.o
-          gcc -m32 -ffreestanding -O2 -Wall -Wextra -fno-stack-protector -fno-pie -fno-pic -Iinclude -Ikernel -c kernel/paging.c -o build/paging.o
-          gcc -m32 -ffreestanding -O2 -Wall -Wextra -fno-stack-protector -fno-pie -fno-pic -Iinclude -Ikernel -c kernel/idt.c -o build/idt.o
-          gcc -m32 -ffreestanding -O2 -Wall -Wextra -fno-stack-protector -fno-pie -fno-pic -Iinclude -Ikernel -c desktop/xfce/xfce_session.c -o build/xfce_session.o
+          for src in kernel/kernel.c kernel/net.c kernel/process.c kernel/syscall.c kernel/gdt.c kernel/tss.c kernel/paging.c kernel/idt.c kernel/fs.c kernel/elf.c kernel/graphics.c desktop/xfce/xfce_session.c; do
+            obj="build/$(basename "$src" .c).o"
+            gcc -m32 -ffreestanding -O2 -Wall -Wextra -fno-stack-protector -fno-pie -fno-pic -fno-builtin -Iinclude -Ikernel -c "$src" -o "$obj"
+          done
 
-      - name: Build userspace init image
-        run: |
-          gcc -m32 -ffreestanding -O2 -Wall -Wextra -fno-stack-protector -fno-pie -fno-pic -nostdlib -Iinclude -c user/init.c -o build/init.o
-          file build/init.o
-
-      - name: Link kernel and userspace image
+      - name: Link kernel with embedded filesystem
         run: |
           ld -m elf_i386 -T kernel/linker.ld -o build/testos.bin \
-            build/boot.o build/kernel.o build/net.o build/process.o build/syscall.o \
-            build/gdt.o build/tss.o build/paging.o build/idt.o build/syscall_isr.o \
-            build/xfce_session.o build/init.o
+            build/boot.o build/syscall_isr.o build/kernel.o build/net.o build/process.o \
+            build/syscall.o build/gdt.o build/tss.o build/paging.o build/idt.o build/fs.o \
+            build/elf.o build/graphics.o build/xfce_session.o build/initramfs.o
           readelf -h build/testos.bin
-          nm -n build/testos.bin | grep -E 'user_init|__user_(start|end)' || true
+          nm -n build/testos.bin | grep -E '(_start|kernel_main|__initramfs_(start|end))'
 
       - name: Build ISO
         run: |
@@ -63,8 +67,11 @@ jobs:
           cp grub/grub.cfg build/iso/boot/grub/grub.cfg
           grub-mkrescue -o build/testos.iso build/iso
 
-      - name: Upload ISO
+      - name: Upload ISO and userspace artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: testos-iso
-          path: build/testos.iso
+          name: testos-build
+          path: |
+            build/testos.iso
+            build/init.elf
+            build/initramfs.img
