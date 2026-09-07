@@ -26,15 +26,19 @@ SECTIONS
         *(.bss)
     }
 
-    /* User programs live in the identity-mapped 4 MiB region. */
-    . = 4M;
-    .user : ALIGN(4K)
+    /* Embedded filesystem image. The ELF loader reads /bin/init from here. */
+    . = 8M;
+    .initramfs : ALIGN(4K)
     {
-        __user_start = .;
-        KEEP(*(.user.text))
-        KEEP(*(.user.rodata))
-        KEEP(*(.user.data))
-        KEEP(*(.user.bss))
-        __user_end = .;
+        __initramfs_start = .;
+        KEEP(*(.initramfs))
+        __initramfs_end = .;
+    }
+
+    /DISCARD/ :
+    {
+        *(.comment)
+        *(.eh_frame)
+        *(.note.GNU-stack)
     }
 }
