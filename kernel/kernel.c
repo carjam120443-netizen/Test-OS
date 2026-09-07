@@ -15,6 +15,10 @@
 #define VGA_WIDTH 80
 #define VGA_HEIGHT 25
 #define VGA_MEMORY ((volatile uint16_t*)0xB8000)
+
+/* Keep the graphical shell testable while the ring-3 path is being debugged. */
+#define TESTOS_BOOT_TO_DESKTOP 1
+
 extern const uint8_t __initramfs_start[];
 extern const uint8_t __initramfs_end[];
 static uint8_t row, column;
@@ -34,6 +38,15 @@ void kernel_main(uint32_t multiboot_magic, uint32_t multiboot_info) {
     terminal_write("Desktop: initializing native graphical shell...\n");
     desktop_init();
     terminal_write("Desktop: READY (framebuffer + panel + starter window)\n");
+
+#if TESTOS_BOOT_TO_DESKTOP
+    terminal_write("Boot mode: DESKTOP SAFE MODE (ring 3 temporarily disabled)\n");
+    terminal_write("Desktop: entering kernel event loop...\n");
+    for (;;) {
+        desktop_update();
+    }
+#endif
+
     terminal_write("Network: initializing E1000...\n");
     net_init();
     gdt_init(); terminal_write("GDT: READY\n");
@@ -56,7 +69,6 @@ void kernel_main(uint32_t multiboot_magic, uint32_t multiboot_info) {
     terminal_write("Exec path: kernel -> process -> virtual address space -> ELF -> ring 3\n");
     terminal_write("libc + ramfs + framebuffer + compositor + desktop: ONLINE\n");
     terminal_write("Launching /bin/init...\n");
-    /* Keep the user stack below 16 MiB and away from the initramfs at 8 MiB. */
     enter_user_mode(image.entry, TESTOS_USER_STACK_TOP);
     for(;;)__asm__ volatile("hlt");
 }
