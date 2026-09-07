@@ -4,7 +4,6 @@
 #include <stdint.h>
 
 #define TESTOS_MAX_PROCESSES 16
-
 #define PROCESS_UNUSED 0
 #define PROCESS_READY  1
 #define PROCESS_RUNNING 2
@@ -19,11 +18,12 @@ struct process {
     uint32_t user_stack;
     uint32_t image_start;
     uint32_t image_end;
+    uint32_t page_directory;
     const char *name;
 };
 
 void process_init(void);
-int process_create(const char *name, uint32_t entry, uint32_t image_start, uint32_t image_end);
+int process_create(const char *name, uint32_t entry, uint32_t image_start, uint32_t image_end, uint32_t page_directory);
 const struct process *process_get(uint32_t pid);
 uint32_t process_count(void);
 const struct process *process_table(void);
