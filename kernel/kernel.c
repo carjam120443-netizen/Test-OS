@@ -2,12 +2,18 @@
 #include "net.h"
 #include "process.h"
 #include "syscall.h"
+#include "gdt.h"
+#include "tss.h"
+#include "paging.h"
+#include "idt.h"
 
 #define VGA_WIDTH 80
 #define VGA_HEIGHT 25
 #define VGA_MEMORY ((volatile uint16_t*)0xB8000)
 #define KEYBOARD_DATA 0x60
 #define KEYBOARD_STATUS 0x64
+
+extern void user_init(void);
 
 static uint8_t row = 0;
 static uint8_t column = 0;
@@ -152,10 +158,11 @@ static void shell_command(void) {
         terminal_write("  reboot - reboot the machine\n\n");
         shell_prompt();
     } else if (string_equal(input, "about")) {
-        terminal_write("Test-OS 0.2.0\n");
+        terminal_write("Test-OS 0.3.0\n");
         terminal_write("Experimental x86 operating system.\n");
         terminal_write("Kernel: C + x86 assembly\n");
-        terminal_write("Userspace ABI: enabled\n\n");
+        terminal_write("Memory: 16 MiB identity mapped\n");
+        terminal_write("Userspace: ring 3 + int 0x80\n\n");
         shell_prompt();
     } else if (string_equal(input, "net")) {
         print_network_status();
@@ -168,8 +175,8 @@ static void shell_command(void) {
     } else if (string_equal(input, "user")) {
         terminal_write("Userspace subsystem: READY\n");
         terminal_write("Init PID: 1\n");
-        terminal_write("Syscalls: write, getpid, yield, exit\n");
-        terminal_write("Execution mode: kernel-only (ring 3 loader next)\n\n");
+        terminal_write("Execution mode: ring 3\n");
+        terminal_write("Syscalls: int 0x80 (write/getpid/yield/exit)\n\n");
         shell_prompt();
     } else if (string_equal(input, "clear")) {
         terminal_clear();
@@ -227,24 +234,27 @@ void kernel_main(void) {
     terminal_write("       TEST-OS KERNEL      \n");
     terminal_write("===========================\n\n");
     terminal_write("Test-OS has booted successfully!\n");
-    terminal_write("Kernel: 0.2.0\n");
+    terminal_write("Kernel: 0.3.0\n");
     terminal_write("Architecture: x86\n");
-    terminal_write("Status: ONLINE\n");
 
     process_init();
-    int init_pid = process_create("init", 0x00400000, 0x00400000, 0x00410000);
+    int init_pid = process_create("init", (uint32_t)&user_init, 0x00400000, 0x00410000);
     terminal_write("Process manager: ");
     terminal_write(init_pid > 0 ? "READY (init PID 1)\n" : "FAILED\n");
 
-    terminal_write("Userspace ABI: READY\n");
-    terminal_write("Initializing network...\n");
-    terminal_write(net_init() ? "Network: E1000 initialized\n\n" : "Network: no supported E1000 NIC\n\n");
-    terminal_write("Type 'help' for available commands.\n\n");
-    shell_prompt();
+    terminal_write("GDT: ");
+    gdt_init();
+    terminal_write("READY\n");
+    terminal_write("Paging: ");
+    terminal_write(paging_init() ? "16 MiB READY\n" : "FAILED\n");
+    terminal_write("TSS: ");
+    tss_init();
+    terminal_write("READY\n");
+    terminal_write("IDT: ");
+    idt_init();
+    terminal_write("READY (int 0x80)\n");
+    terminal_write("Userspace: launching init in ring 3...\n\n");
 
-    for (;;) {
-        keyboard_poll();
-        net_poll();
-        __asm__ volatile ("hlt");
-    }
+    net_init();
+    enter_user_mode((uint32_t)&user_init, 0x00800000);
 }
