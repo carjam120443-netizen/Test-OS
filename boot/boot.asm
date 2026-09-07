@@ -1,7 +1,4 @@
-; Test-OS boot entry
-; Multiboot-compatible 32-bit entry point. The kernel will transition
-; to the architecture-specific environment as the project grows.
-
+; Test-OS Multiboot entry
 section .multiboot
 align 4
     dd 0x1BADB002
@@ -16,6 +13,9 @@ extern kernel_main
 _start:
     cli
     mov esp, stack_top
+    ; Multiboot supplies EAX=magic and EBX=info structure.
+    push ebx
+    push eax
     call kernel_main
 .hang:
     hlt
@@ -26,3 +26,5 @@ align 16
 stack_bottom:
     resb 16384
 stack_top:
+
+section .note.GNU-stack,"",@progbits
