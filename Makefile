@@ -18,8 +18,11 @@ $(BUILD)/boot.o: boot/boot.asm | $(BUILD)
 $(BUILD)/kernel.o: kernel/kernel.c | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(BUILD)/testos.bin: $(BUILD)/boot.o $(BUILD)/kernel.o kernel/linker.ld
-	$(LD) $(LDFLAGS) -o $@ $(BUILD)/boot.o $(BUILD)/kernel.o
+$(BUILD)/net.o: kernel/net.c include/net.h | $(BUILD)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/testos.bin: $(BUILD)/boot.o $(BUILD)/kernel.o $(BUILD)/net.o kernel/linker.ld
+	$(LD) $(LDFLAGS) -o $@ $(BUILD)/boot.o $(BUILD)/kernel.o $(BUILD)/net.o
 
 iso: $(BUILD)/testos.bin
 	mkdir -p $(BUILD)/iso/boot/grub
