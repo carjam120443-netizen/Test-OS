@@ -39,6 +39,8 @@ $(BUILD)/graphics.o: kernel/graphics.c kernel/graphics.h | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
 $(BUILD)/compositor.o: kernel/compositor.c kernel/compositor.h | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
+$(BUILD)/desktop.o: kernel/desktop.c kernel/desktop.h kernel/graphics.h kernel/compositor.h | $(BUILD)
+	$(CC) $(CFLAGS) -c $< -o $@
 $(BUILD)/xfce_session.o: desktop/xfce/xfce_session.c | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
 $(BUILD)/libc.o: user/libc.c user/libc.h include/syscall.h | $(BUILD)
@@ -52,8 +54,8 @@ $(BUILD)/initramfs.img: $(BUILD)/init.elf tools/mkinitramfs.py
 $(BUILD)/initramfs.o: $(BUILD)/initramfs.img
 	$(OBJCOPY) -I binary -O elf32-i386 -B i386 $< $@
 	$(OBJCOPY) --rename-section .data=.initramfs,alloc,load,readonly,data,contents $@
-$(BUILD)/testos.bin: $(BUILD)/boot.o $(BUILD)/syscall_isr.o $(BUILD)/kernel.o $(BUILD)/net.o $(BUILD)/process.o $(BUILD)/syscall.o $(BUILD)/gdt.o $(BUILD)/tss.o $(BUILD)/paging.o $(BUILD)/idt.o $(BUILD)/fs.o $(BUILD)/elf.o $(BUILD)/graphics.o $(BUILD)/compositor.o $(BUILD)/xfce_session.o $(BUILD)/initramfs.o kernel/linker.ld
-	$(LD) $(LDFLAGS) -o $@ $(BUILD)/boot.o $(BUILD)/syscall_isr.o $(BUILD)/kernel.o $(BUILD)/net.o $(BUILD)/process.o $(BUILD)/syscall.o $(BUILD)/gdt.o $(BUILD)/tss.o $(BUILD)/paging.o $(BUILD)/idt.o $(BUILD)/fs.o $(BUILD)/elf.o $(BUILD)/graphics.o $(BUILD)/compositor.o $(BUILD)/xfce_session.o $(BUILD)/initramfs.o
+$(BUILD)/testos.bin: $(BUILD)/boot.o $(BUILD)/syscall_isr.o $(BUILD)/kernel.o $(BUILD)/net.o $(BUILD)/process.o $(BUILD)/syscall.o $(BUILD)/gdt.o $(BUILD)/tss.o $(BUILD)/paging.o $(BUILD)/idt.o $(BUILD)/fs.o $(BUILD)/elf.o $(BUILD)/graphics.o $(BUILD)/compositor.o $(BUILD)/desktop.o $(BUILD)/xfce_session.o $(BUILD)/initramfs.o kernel/linker.ld
+	$(LD) $(LDFLAGS) -o $@ $(BUILD)/boot.o $(BUILD)/syscall_isr.o $(BUILD)/kernel.o $(BUILD)/net.o $(BUILD)/process.o $(BUILD)/syscall.o $(BUILD)/gdt.o $(BUILD)/tss.o $(BUILD)/paging.o $(BUILD)/idt.o $(BUILD)/fs.o $(BUILD)/elf.o $(BUILD)/graphics.o $(BUILD)/compositor.o $(BUILD)/desktop.o $(BUILD)/xfce_session.o $(BUILD)/initramfs.o
 userspace: $(BUILD)/init.elf
 	@echo "Userspace ELF: $(BUILD)/init.elf"
 iso: $(BUILD)/testos.bin
