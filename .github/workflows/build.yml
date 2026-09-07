@@ -1,18 +1,22 @@
 name: Build Test-OS
+
 on:
   push:
   pull_request:
   workflow_dispatch:
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Install build tools
         run: |
           sudo apt-get update
           sudo apt-get install -y nasm grub-pc-bin grub-common xorriso mtools gcc-multilib binutils python3
+
       - name: Build userspace libc and ELF executable
         run: |
           mkdir -p build
@@ -21,11 +25,14 @@ jobs:
           ld -m elf_i386 -T user/user.ld -o build/init.elf build/libc.o build/init.o
           readelf -h build/init.elf
           readelf -l build/init.elf
+
       - name: Build initramfs filesystem image
         run: |
           python3 tools/mkinitramfs.py build/init.elf build/initramfs.img
           objcopy -I binary -O elf32-i386 -B i386 build/initramfs.img build/initramfs.o
           objcopy --rename-section .data=.initramfs,alloc,load,readonly,data,contents build/initramfs.o
+          objcopy --set-section-alignment .initramfs=4096 build/initramfs.o
+
       - name: Build kernel
         run: |
           nasm -f elf32 boot/boot.asm -o build/boot.o
@@ -34,17 +41,23 @@ jobs:
             obj="build/$(basename "$src" .c).o"
             gcc -m32 -ffreestanding -O2 -Wall -Wextra -fno-stack-protector -fno-pie -fno-pic -fno-builtin -Iinclude -Ikernel -c "$src" -o "$obj"
           done
+
       - name: Link kernel
         run: |
-          ld -m elf_i386 -T kernel/linker.ld -o build/testos.bin build/boot.o build/syscall_isr.o build/kernel.o build/net.o build/process.o build/syscall.o build/gdt.o build/tss.o build/paging.o build/idt.o build/fs.o build/elf.o build/graphics.o build/compositor.o build/xfce_session.o build/initramfs.o
+          ld -m elf_i386 -T kernel/linker.ld -o build/testos.bin \
+            build/boot.o build/syscall_isr.o build/kernel.o build/net.o build/process.o \
+            build/syscall.o build/gdt.o build/tss.o build/paging.o build/idt.o build/fs.o \
+            build/elf.o build/graphics.o build/compositor.o build/xfce_session.o build/initramfs.o
           readelf -h build/testos.bin
-          nm -n build/testos.bin | grep -E '(_start|kernel_main|__initramfs_(start|end))'
+          nm -n build/testos.bin | grep -E '(_start|kernel_main|compositor_init|__initramfs_(start|end))'
+
       - name: Build ISO
         run: |
           mkdir -p build/iso/boot/grub
           cp build/testos.bin build/iso/boot/testos.bin
           cp grub/grub.cfg build/iso/boot/grub/grub.cfg
           grub-mkrescue -o build/testos.iso build/iso
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
