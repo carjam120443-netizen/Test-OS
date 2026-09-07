@@ -28,7 +28,9 @@ int process_create(const char *name, uint32_t entry, uint32_t image_start, uint3
         processes[i].parent_pid = 0;
         processes[i].state = PROCESS_READY;
         processes[i].entry = entry;
-        processes[i].user_stack = 0x00800000;
+        /* 0x00800000 is occupied by the embedded initramfs. Keep the user
+           stack at 15 MiB so it cannot overwrite the filesystem image. */
+        processes[i].user_stack = TESTOS_USER_STACK_TOP;
         processes[i].image_start = image_start;
         processes[i].image_end = image_end;
         processes[i].page_directory = page_directory;
