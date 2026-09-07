@@ -15,8 +15,6 @@
 #define VGA_WIDTH 80
 #define VGA_HEIGHT 25
 #define VGA_MEMORY ((volatile uint16_t*)0xB8000)
-
-/* Keep the graphical shell testable while the ring-3 path is being debugged. */
 #define TESTOS_BOOT_TO_DESKTOP 1
 
 extern const uint8_t __initramfs_start[];
@@ -44,6 +42,7 @@ void kernel_main(uint32_t multiboot_magic, uint32_t multiboot_info) {
     terminal_write("Desktop: entering kernel event loop...\n");
     for (;;) {
         desktop_update();
+        __asm__ volatile("hlt");
     }
 #endif
 
