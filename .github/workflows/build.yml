@@ -34,8 +34,9 @@ jobs:
           gcc -m32 -ffreestanding -O2 -Wall -Wextra -fno-stack-protector -Iinclude -c kernel/kernel.c -o build/kernel.o
           gcc -m32 -ffreestanding -O2 -Wall -Wextra -fno-stack-protector -Iinclude -c kernel/net.c -o build/net.o
           gcc -m32 -ffreestanding -O2 -Wall -Wextra -fno-stack-protector -Iinclude -c kernel/process.c -o build/process.o
-          gcc -m32 -ffreestanding -O2 -Wall -Wextra -fno-stack-protector -Iinclude -c kernel/syscall.c -o build/syscall.o
-          ld -m elf_i386 -T kernel/linker.ld -o build/testos.bin build/boot.o build/kernel.o build/net.o build/process.o build/syscall.o
+          gcc -m32 -ffreestanding -O2 -Wall -Wextra -fno-stack-protector -Iinclude -I kernel -c kernel/syscall.c -o build/syscall.o
+          gcc -m32 -ffreestanding -O2 -Wall -Wextra -fno-stack-protector -Iinclude -I kernel -c desktop/xfce/xfce_session.c -o build/xfce_session.o
+          ld -m elf_i386 -T kernel/linker.ld -o build/testos.bin build/boot.o build/kernel.o build/net.o build/process.o build/syscall.o build/xfce_session.o
 
       - name: Build userspace init
         run: |
