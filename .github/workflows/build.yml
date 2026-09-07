@@ -1,0 +1,38 @@
+name: Build Test-OS
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y nasm grub-pc-bin grub-common xorriso gcc-multilib binutils
+
+      - name: Build kernel
+        run: |
+          mkdir -p build
+          nasm -f elf32 boot/boot.asm -o build/boot.o
+          gcc -m32 -ffreestanding -O2 -Wall -Wextra -Iinclude -c kernel/kernel.c -o build/kernel.o
+          ld -m elf_i386 -T kernel/linker.ld -o build/testos.bin build/boot.o build/kernel.o
+
+      - name: Build ISO
+        run: |
+          mkdir -p build/iso/boot/grub
+          cp build/testos.bin build/iso/boot/testos.bin
+          cp grub/grub.cfg build/iso/boot/grub/grub.cfg
+          grub-mkrescue -o build/testos.iso build/iso
+
+      - name: Upload ISO
+        uses: actions/upload-artifact@v4
+        with:
+          name: testos-iso
+          path: build/testos.iso
