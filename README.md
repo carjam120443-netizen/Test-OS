@@ -4,42 +4,78 @@
 
 ## Current status
 
-🚧 **Version 0.1.0 — Kernel foundation**
+🚧 **Version 0.2.0 — Kernel + networking + userspace foundation**
 
 The project currently contains:
 
 - 🥾 Multiboot-compatible boot entry
-- 🧠 Initial freestanding C kernel
-- 🖥️ VGA text terminal output
+- 🧠 Freestanding x86 C kernel
+- 🖥️ VGA text terminal
+- ⌨️ PS/2 keyboard polling
+- 🐚 Interactive kernel shell
+- 🌐 Intel E1000/82540EM network-driver foundation
+- 🧩 Kernel process table with PID allocation
+- 📞 Userspace syscall ABI (`write`, `getpid`, `yield`, `exit`)
+- 🚀 First userspace `init` program source
 - 🔗 Kernel linker script
 - ⚙️ Make-based build system
 - 💿 GRUB ISO generation
 - 🤖 GitHub Actions automated ISO builds
 - 📜 Custom Test-OS Community License
 
+## Userspace architecture
+
+Test-OS is now being split into a privileged kernel and a future userspace environment:
+
+```text
+Test-OS
+├── Kernel
+│   ├── Process manager
+│   ├── Syscall dispatcher
+│   ├── Network driver
+│   └── Hardware drivers
+│
+└── Userspace
+    └── init
+```
+
+The current userspace code is compiled separately from the kernel. Ring-3 execution, paging/address spaces, ELF loading, and a real scheduler are the next stages.
+
 ## Roadmap
 
-- [ ] Interactive shell
-- [ ] Keyboard driver
-- [ ] Interrupt handling
-- [ ] Timer support
-- [ ] Physical and virtual memory management
+- [x] Interactive shell
+- [x] Keyboard driver foundation
+- [x] Networking driver foundation
+- [x] Process table
+- [x] Userspace syscall ABI
+- [x] Userspace init source
+- [ ] GDT/IDT and interrupt handling
+- [ ] Timer and preemptive scheduling
+- [ ] Physical memory manager
+- [ ] Paging and per-process address spaces
+- [ ] Ring-3 userspace execution
+- [ ] ELF program loader
 - [ ] Heap allocator
-- [ ] Filesystem support
+- [ ] VFS and filesystem support
 - [ ] Disk drivers
-- [ ] Userspace and program loading
-- [ ] Networking
+- [ ] Full Ethernet/ARP/IPv4 stack
+- [ ] DHCP, DNS, UDP and TCP
 - [ ] `pkg` package manager
-- [ ] System utilities
-- [ ] GUI/window system
+- [ ] Test-OS libc
+- [ ] Framebuffer graphics
+- [ ] Mouse/input subsystem
+- [ ] Window/display system
+- [ ] GTK/GLib compatibility layer
+- [ ] XFCE port
 - [ ] More architectures
 
 ## Building
 
-The project is currently targeting x86 and is designed to be built with NASM, a freestanding C compiler, GNU binutils, GRUB tooling, and xorriso.
+The project currently targets x86 and is designed to be built with NASM, GCC, GNU binutils, GRUB tooling, and xorriso.
 
 ```bash
 make
+make userspace
 make iso
 ```
 
