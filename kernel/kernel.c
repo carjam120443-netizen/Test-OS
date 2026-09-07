@@ -56,6 +56,7 @@ void kernel_main(uint32_t multiboot_magic, uint32_t multiboot_info) {
     terminal_write("Exec path: kernel -> process -> virtual address space -> ELF -> ring 3\n");
     terminal_write("libc + ramfs + framebuffer + compositor + desktop: ONLINE\n");
     terminal_write("Launching /bin/init...\n");
-    enter_user_mode(image.entry,0x00800000);
+    /* Keep the user stack below 16 MiB and away from the initramfs at 8 MiB. */
+    enter_user_mode(image.entry, TESTOS_USER_STACK_TOP);
     for(;;)__asm__ volatile("hlt");
 }
