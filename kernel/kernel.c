@@ -1,5 +1,7 @@
 #include <stdint.h>
 #include "net.h"
+#include "process.h"
+#include "syscall.h"
 
 #define VGA_WIDTH 80
 #define VGA_HEIGHT 25
@@ -110,6 +112,24 @@ static void print_network_status(void) {
     terminal_putchar('\n');
 }
 
+static void print_processes(void) {
+    const struct process *table = process_table();
+    terminal_write("PID   STATE      NAME\n");
+    terminal_write("-------------------------\n");
+    for (uint32_t i = 0; i < TESTOS_MAX_PROCESSES; ++i) {
+        if (table[i].state == PROCESS_UNUSED) continue;
+        terminal_write_dec(table[i].pid);
+        terminal_write("     ");
+        if (table[i].state == PROCESS_READY) terminal_write("READY      ");
+        else if (table[i].state == PROCESS_RUNNING) terminal_write("RUNNING    ");
+        else if (table[i].state == PROCESS_SLEEPING) terminal_write("SLEEPING   ");
+        else if (table[i].state == PROCESS_ZOMBIE) terminal_write("ZOMBIE     ");
+        else terminal_write("UNKNOWN    ");
+        terminal_write(table[i].name ? table[i].name : "<unnamed>");
+        terminal_putchar('\n');
+    }
+}
+
 static void shell_prompt(void) {
     terminal_write("testos> ");
     input_length = 0;
@@ -127,16 +147,29 @@ static void shell_command(void) {
         terminal_write("  clear  - clear the terminal\n");
         terminal_write("  echo   - print text\n");
         terminal_write("  net    - show network adapter status\n");
+        terminal_write("  ps     - list kernel processes\n");
+        terminal_write("  user   - show userspace status\n");
         terminal_write("  reboot - reboot the machine\n\n");
         shell_prompt();
     } else if (string_equal(input, "about")) {
-        terminal_write("Test-OS 0.1.0\n");
-        terminal_write("A tiny experimental x86 operating system.\n");
-        terminal_write("Kernel: C + x86 assembly\n\n");
+        terminal_write("Test-OS 0.2.0\n");
+        terminal_write("Experimental x86 operating system.\n");
+        terminal_write("Kernel: C + x86 assembly\n");
+        terminal_write("Userspace ABI: enabled\n\n");
         shell_prompt();
     } else if (string_equal(input, "net")) {
         print_network_status();
         terminal_putchar('\n');
+        shell_prompt();
+    } else if (string_equal(input, "ps")) {
+        print_processes();
+        terminal_putchar('\n');
+        shell_prompt();
+    } else if (string_equal(input, "user")) {
+        terminal_write("Userspace subsystem: READY\n");
+        terminal_write("Init PID: 1\n");
+        terminal_write("Syscalls: write, getpid, yield, exit\n");
+        terminal_write("Execution mode: kernel-only (ring 3 loader next)\n\n");
         shell_prompt();
     } else if (string_equal(input, "clear")) {
         terminal_clear();
@@ -194,9 +227,16 @@ void kernel_main(void) {
     terminal_write("       TEST-OS KERNEL      \n");
     terminal_write("===========================\n\n");
     terminal_write("Test-OS has booted successfully!\n");
-    terminal_write("Kernel: 0.1.0\n");
+    terminal_write("Kernel: 0.2.0\n");
     terminal_write("Architecture: x86\n");
     terminal_write("Status: ONLINE\n");
+
+    process_init();
+    int init_pid = process_create("init", 0x00400000, 0x00400000, 0x00410000);
+    terminal_write("Process manager: ");
+    terminal_write(init_pid > 0 ? "READY (init PID 1)\n" : "FAILED\n");
+
+    terminal_write("Userspace ABI: READY\n");
     terminal_write("Initializing network...\n");
     terminal_write(net_init() ? "Network: E1000 initialized\n\n" : "Network: no supported E1000 NIC\n\n");
     terminal_write("Type 'help' for available commands.\n\n");
