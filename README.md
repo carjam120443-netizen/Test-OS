@@ -1,12 +1,17 @@
 # Test-OS 🖥️
 
+> [!WARNING]
+> **Test-OS is basically retired / inactive.** This was an old operating-system experiment built for learning and experimentation. I don't currently plan to actively develop or maintain it, so don't expect regular updates, fixes, or new releases. The repository is being kept up as a record of the project and its experiments.
+
+## About
+
 **Test-OS** is a custom x86 operating-system project built from the ground up for learning, experimentation, and absolutely unnecessary levels of customization. 😈
 
-## Current status
+The project explored ideas such as a freestanding C kernel, a text terminal, keyboard input, early networking-driver work, a process table, and a basic userspace syscall interface. Its code, build instructions, roadmap, and feature list below describe the project as it existed during development; they may be incomplete or outdated.
 
-🚧 **Version 0.2.0 — Kernel + networking + userspace foundation**
+## Historical project status
 
-The project currently contains:
+The project reached an early kernel and userspace foundation, including:
 
 - 🥾 Multiboot-compatible boot entry
 - 🧠 Freestanding x86 C kernel
@@ -23,9 +28,9 @@ The project currently contains:
 - 🤖 GitHub Actions automated ISO builds
 - 📜 Custom Test-OS Community License
 
-## Userspace architecture
+These features were experimental foundations, not a claim that Test-OS became a complete or production-ready operating system.
 
-Test-OS is now being split into a privileged kernel and a future userspace environment:
+## Historical userspace architecture
 
 ```text
 Test-OS
@@ -39,9 +44,9 @@ Test-OS
     └── init
 ```
 
-The current userspace code is compiled separately from the kernel. Ring-3 execution, paging/address spaces, ELF loading, and a real scheduler are the next stages.
+## Old roadmap
 
-## Roadmap
+The checklist below is preserved for historical reference only; unchecked items are **not promises of future development**.
 
 - [x] Interactive shell
 - [x] Keyboard driver foundation
@@ -69,9 +74,9 @@ The current userspace code is compiled separately from the kernel. Ring-3 execut
 - [ ] XFCE port
 - [ ] More architectures
 
-## Building
+## Historical build instructions
 
-The project currently targets x86 and is designed to be built with NASM, GCC, GNU binutils, GRUB tooling, and xorriso.
+These instructions are kept in case you want to experiment with the source, but they may no longer work with current toolchains or dependencies. The project targeted x86 and used NASM, GCC, GNU binutils, GRUB tooling, and xorriso.
 
 ```bash
 make
@@ -79,11 +84,11 @@ make userspace
 make iso
 ```
 
-The resulting ISO will be placed at `build/testos.iso`.
+The ISO was configured to be placed at `build/testos.iso`.
 
-## Running
+## Historical emulator instructions
 
-Test-OS is intended to be tested in an emulator such as QEMU before being considered for real hardware.
+Test-OS was intended to be tested in an emulator such as QEMU before any real-hardware experimentation.
 
 ```bash
 qemu-system-i386 -cdrom build/testos.iso
@@ -93,4 +98,4 @@ qemu-system-i386 -cdrom build/testos.iso
 
 Test-OS uses the **Test-OS Community License**, included in [`LICENSE`](LICENSE).
 
-Fork it. Break it. Fix it. Turn it into something completely ridiculous. 🚀
+Fork it, study it, or use it as a snapshot of an old experiment. 🚀
